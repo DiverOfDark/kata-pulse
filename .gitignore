@@ -1,0 +1,23 @@
+# Rust build artifacts
+/target/
+../Cargo.lock
+**/*.rs.bk
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build output
+/bin/
+*.o
+*.a
+*.so
+*.dylib
+
+# Generated files
+*.pb.rs
+proto/generated/

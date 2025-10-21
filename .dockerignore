@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+.github
+
+# Build artifacts
+target/
+*.o
+*.a
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation and configs
+README.md
+*.md
+CRATE_ANALYSIS.md
+INTEGRATION_SUMMARY.md
+CLAUDE.md
+.env
+.env.local
+
+# Testing
+.cargo/
+
+# Temporary files
+*.tmp
+*.log

@@ -1,0 +1,99 @@
+# Multi-stage Dockerfile for KataPulse with gdbserver debugging
+# Real-time metrics for Kata Containers. cadvisor-compatible monitoring agent (debug variant).
+# Stage 1: Dependency builder - compiles and caches dependencies
+FROM rust:1.82 as dependencies
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    protobuf-compiler \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy only Cargo files to leverage Docker layer caching for dependencies
+COPY Cargo.toml Cargo.lock ./
+
+# Create a dummy main.rs to build dependencies
+RUN mkdir -p src && \
+    echo "fn main() {}" > src/main.rs && \
+    cargo build && \
+    rm -rf src
+
+# Stage 2: Code builder - compiles the actual application with debug symbols
+FROM dependencies as builder
+
+WORKDIR /app
+
+# Copy the full source code
+COPY src ./src
+
+# Build in debug mode with full debug symbols for debugging
+RUN cargo build
+
+# Verify the binary works
+RUN ./target/debug/kata-pulse --help || true
+
+# Stage 3: Debug runtime stage
+FROM debian:bookworm-slim
+
+WORKDIR /app
+
+# Install runtime dependencies and debugging tools
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    gdbserver \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the built binary from builder stage (debug build with symbols)
+COPY --from=builder /app/target/debug/kata-pulse /usr/local/bin/kata-pulse
+
+# Create wrapper script to start app in background and attach gdbserver
+RUN cat > /usr/local/bin/gdbserver-wrapper.sh << 'EOF'
+#!/bin/bash
+# Wrapper script to start KataPulse in background and attach gdbserver
+
+set -e
+
+# Start KataPulse in background, forwarding output to stdout/stderr
+/usr/local/bin/kata-pulse "$@" 2>&1 &
+APP_PID=$!
+
+echo "[DEBUG] Started KataPulse with PID $APP_PID"
+
+# Give app a moment to start
+sleep 1
+
+# Attach gdbserver to the running process
+echo "[DEBUG] Attaching gdbserver to PID $APP_PID on 0.0.0.0:1339"
+exec gdbserver --multi --attach 0.0.0.0:1339 $APP_PID
+
+# If gdbserver exits, wait for app to finish
+wait $APP_PID
+EOF
+
+RUN chmod +x /usr/local/bin/gdbserver-wrapper.sh
+
+# Run as root (system component)
+USER root
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8090/ || exit 1
+
+# Default environment variables
+ENV KATA_PULSE_LISTEN="0.0.0.0:8090" \
+    RUST_LOG=debug \
+    GDB_PORT="1339"
+
+# Expose metrics port and gdbserver port
+EXPOSE 8090
+EXPOSE 1339
+
+# Debug entrypoint: starts KataPulse in background, then attaches gdbserver
+# KataPulse runs normally with full output to logs
+# gdbserver listens on port 1339 for debugger connections via:
+# gdb target remote localhost:1339
+ENTRYPOINT ["/usr/local/bin/gdbserver-wrapper.sh"]
