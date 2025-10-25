@@ -63,9 +63,9 @@ impl StandardLabels {
         let pod_uid_str = pod_uid.into();
 
         StandardLabels {
-            container: String::new(), // Empty for sandbox-level metrics
+            container: "kata".to_string(), // Empty for sandbox-level metrics
             id: pod_uid_str,
-            image: String::new(), // Not available from Cloud Hypervisor metrics
+            image: "unknown".to_string(), // Not available from Cloud Hypervisor metrics
             name: pod_name_str.clone(), // Use pod name as container name
             namespace: pod_namespace_str,
             pod: pod_name_str,
