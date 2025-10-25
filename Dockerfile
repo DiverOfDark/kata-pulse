@@ -1,7 +1,6 @@
 # Multi-stage Dockerfile for KataPulse
 # Real-time metrics for Kata Containers. cadvisor-compatible monitoring agent.
-# Stage 1: Dependency builder - compiles and caches dependencies
-FROM rust:1.82 as dependencies
+FROM rust:1.82 as builder
 
 WORKDIR /app
 
@@ -11,26 +10,13 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only Cargo files to leverage Docker layer caching for dependencies
+# Copy Cargo files
 COPY Cargo.toml Cargo.lock ./
 
-# Create a dummy main.rs to build dependencies
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    mkdir -p src && \
-    echo "fn main() {}" > src/main.rs && \
-    cargo build --release && \
-    rm -rf src
-
-# Stage 2: Code builder - compiles the actual application
-FROM dependencies as builder
-
-WORKDIR /app
-
-# Copy the full source code
+# Copy source code
 COPY src ./src
 
-# Build the release binary
+# Build the release binary with cache mounts
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/app/target \
@@ -40,7 +26,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # Verify the binary works
 RUN /kata-pulse --help || true
 
-# Stage 3: Runtime stage
+# Runtime stage
 FROM debian:bookworm-slim
 
 WORKDIR /app
