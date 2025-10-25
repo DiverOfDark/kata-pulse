@@ -124,6 +124,7 @@ jobs:
     needs: [test-suite, clippy, fmt, helm-lint, build-release]
     permissions:
       contents: read
+      security-events: write
       packages: write
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
