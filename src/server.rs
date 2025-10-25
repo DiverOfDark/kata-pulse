@@ -1,6 +1,5 @@
 use axum::{
     extract::Query,
-    http::header::HeaderMap,
     response::{Html, IntoResponse},
     routing::get,
     Router,
@@ -40,7 +39,7 @@ pub fn create_router(app_context: Arc<AppContext>) -> Router {
 }
 
 /// Index page handler
-async fn index_page(headers: HeaderMap) -> impl IntoResponse {
+async fn index_page() -> impl IntoResponse {
     info!("Index page request received");
     let html = r#"<html>
     <head><title>Kata Pulse</title></head>
