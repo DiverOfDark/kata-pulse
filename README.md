@@ -89,7 +89,7 @@ RUST_LOG=info                                   # Log level (trace/debug/info/wa
 RUNTIME_ENDPOINT=/run/containerd/containerd.sock  # CRI socket path
 
 # Metrics collection
-KATA_MONITOR_METRICS_INTERVAL=60                # Interval in seconds (default: 60)
+KATA_PULSE_METRICS_INTERVAL=60                # Interval in seconds (default: 60)
 ```
 
 ### Command Line Arguments
@@ -111,7 +111,7 @@ OPTIONS:
   -m, --metrics-interval-secs <METRICS_INTERVAL_SECS>
           Metrics collection interval in seconds
           [default: 60]
-          [env: KATA_MONITOR_METRICS_INTERVAL]
+          [env: KATA_PULSE_METRICS_INTERVAL]
 
   -h, --help
           Print help
@@ -261,6 +261,54 @@ cargo audit
 ```
 
 ## Kubernetes Deployment
+
+### Helm Chart
+
+The easiest way to deploy kata-pulse to Kubernetes is using the official Helm chart.
+
+**Prerequisites:**
+- Kubernetes 1.20+
+- Helm 3.0+
+- Prometheus Operator (for PodMonitor integration)
+- Kata Containers runtime installed on nodes
+
+**Installation:**
+
+```bash
+# Install from GHCR
+helm install kata-pulse oci://ghcr.io/diverofdark/kata-pulse/helm
+
+# Or to specific namespace
+helm install kata-pulse oci://ghcr.io/diverofdark/kata-pulse/helm -n monitoring --create-namespace
+
+# With custom values
+helm install kata-pulse oci://ghcr.io/diverofdark/kata-pulse/helm \
+  --set config.logLevel=debug \
+  --set config.metricsIntervalSecs=30
+```
+
+**Chart Configuration:**
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `image.pullPolicy` | `Always` | Image pull policy |
+| `config.runtimeEndpoint` | `/run/containerd/containerd.sock` | CRI runtime socket |
+| `config.metricsIntervalSecs` | `60` | Metrics collection interval |
+| `config.logLevel` | `info` | Log level (trace/debug/info/warn/error) |
+| `resources.requests.cpu` | `50m` | CPU request |
+| `resources.requests.memory` | `100Mi` | Memory request |
+| `resources.limits.cpu` | `100m` | CPU limit |
+| `resources.limits.memory` | `200Mi` | Memory limit |
+| `podMonitor.enabled` | `true` | Enable Prometheus PodMonitor |
+| `podMonitor.interval` | `30s` | Scrape interval |
+
+**Uninstall:**
+
+```bash
+helm uninstall kata-pulse
+```
+
+For detailed chart documentation, see [helm/kata-pulse/README.md](helm/kata-pulse/README.md).
 
 ### DaemonSet Example
 

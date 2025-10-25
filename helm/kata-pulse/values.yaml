@@ -1,0 +1,70 @@
+image:
+  repository: ghcr.io/diverofdark/kata-pulse
+  pullPolicy: Always
+  tag: ""
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+podSecurityContext:
+  runAsNonRoot: false
+  runAsUser: 0
+  fsGroup: 0
+
+securityContext:
+  privileged: true
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: true
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 200Mi
+  requests:
+    cpu: 50m
+    memory: 100Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+config:
+  runtimeEndpoint: "/run/containerd/containerd.sock"
+  metricsIntervalSecs: 60
+  logLevel: "info"
+
+volumeMounts:
+  - name: sandbox-dir
+    mountPath: /run/vc/sbs
+    readOnly: true
+  - name: kata-dir
+    mountPath: /run/kata
+    readOnly: true
+  - name: containerd-socket
+    mountPath: /run/containerd
+    readOnly: true
+
+volumes:
+  - name: sandbox-dir
+    hostPath:
+      path: /run/vc/sbs
+      type: DirectoryOrCreate
+  - name: kata-dir
+    hostPath:
+      path: /run/kata
+      type: DirectoryOrCreate
+  - name: containerd-socket
+    hostPath:
+      path: /run/containerd
+      type: DirectoryOrCreate
+
+podMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+  relabelings: []
