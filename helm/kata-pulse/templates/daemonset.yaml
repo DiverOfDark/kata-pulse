@@ -27,7 +27,7 @@ spec:
               protocol: TCP
           env:
             - name: KATA_PULSE_LISTEN
-              value: "127.0.0.1:8090"
+              value: "0.0.0.0:8090"
             - name: RUNTIME_ENDPOINT
               value: {{ .Values.config.runtimeEndpoint | quote }}
             - name: KATA_PULSE_METRICS_INTERVAL
