@@ -80,7 +80,7 @@ impl Default for ConversionConfig {
                 "tap.*".to_string(),
                 "tun.*".to_string(),
             ],
-            cpu_jiffy_conversion_factor: 1_000_000_000.0,  // nanoseconds to seconds
+            cpu_jiffy_conversion_factor: 1_000_000_000.0, // nanoseconds to seconds
         }
     }
 }
