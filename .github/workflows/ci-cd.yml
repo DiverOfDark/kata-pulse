@@ -238,12 +238,8 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-      - name: Update Helm Chart appVersion
-        run: |
-          sed -i "s/appVersion: .*/appVersion: \"${{ steps.version.outputs.version }}\"/" helm/kata-pulse/Chart.yaml
-
       - name: Package Helm chart
-        run: helm package helm/kata-pulse
+        run: helm package helm/kata-pulse --version "${{ steps.version.outputs.version }}" --app-version "${{ steps.version.outputs.version }}"
 
       - name: Push Helm chart to GHCR
         run: |
