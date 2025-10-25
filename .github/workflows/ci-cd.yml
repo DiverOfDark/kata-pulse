@@ -47,9 +47,6 @@ jobs:
       - name: Run tests
         run: cargo test --verbose
 
-      - name: Run doctests
-        run: cargo test --doc
-
   clippy:
     name: Clippy Lints
     runs-on: ubuntu-latest
