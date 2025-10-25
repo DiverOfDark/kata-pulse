@@ -130,6 +130,10 @@ jobs:
       packages: write
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    outputs:
+      image: ${{ steps.version.outputs.image }}
+      digest: ${{ steps.version.outputs.digest }}
+      version: ${{ steps.version.outputs.version }}
 
     steps:
       - name: Checkout code
@@ -183,6 +187,7 @@ jobs:
 
       - name: Build and push multi-arch image
         uses: docker/build-push-action@v6
+        id: build
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
@@ -192,13 +197,19 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Extract version from tags
+      - name: Extract version and image digest
         id: version
         run: |
           TAGS="${{ steps.meta.outputs.tags }}"
           # Get first tag and extract version
           TAG=$(echo "$TAGS" | head -1 | rev | cut -d: -f1 | rev)
           echo "version=$TAG" >> $GITHUB_OUTPUT
+          # Get image digest (SHA256)
+          DIGEST="${{ steps.build.outputs.digest }}"
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+          # Construct image reference with digest
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@$DIGEST"
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
 
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
@@ -223,13 +234,15 @@ jobs:
     needs: [build-publish]
     permissions:
       security-events: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Run Grype scan
         uses: anchore/scan-action@v6
         id: scan
         with:
-          image: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}'
+          image: ${{ needs.build-publish.outputs.image }}
           fail-build: false
           output-format: sarif
 
@@ -244,12 +257,14 @@ jobs:
     needs: [build-publish]
     permissions:
       security-events: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Run Trivy scan
         uses: aquasecurity/trivy-action@0.28.0
         with:
-          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}'
+          image-ref: ${{ needs.build-publish.outputs.image }}
           format: 'sarif'
           output: 'trivy-results.sarif'
 
@@ -283,7 +298,7 @@ jobs:
           version: latest
 
       - name: Package Helm chart
-        run: helm package helm/kata-pulse --version "${{ github.ref_name }}" --app-version "${{ github.ref_name }}"
+        run: helm package helm/kata-pulse --version "${{ needs.build-publish.outputs.version }}" --app-version "${{ needs.build-publish.outputs.version }}"
 
       - name: Push Helm chart to GHCR
         run: |
