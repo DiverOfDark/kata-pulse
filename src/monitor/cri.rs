@@ -1,4 +1,5 @@
 use anyhow::Result;
+use std::sync::OnceLock;
 use std::time::Duration;
 use tracing::{debug, error, info, warn};
 
@@ -12,7 +13,7 @@ pub mod runtime {
 }
 
 /// Global CRI client instance for reuse across monitor operations
-static CRI_CLIENT: once_cell::sync::OnceCell<CRIClient> = once_cell::sync::OnceCell::new();
+static CRI_CLIENT: OnceLock<CRIClient> = OnceLock::new();
 
 /// Initialize the CRI client with the given endpoint
 pub fn init_cri_client(endpoint: impl Into<String>) -> Result<CRIClient> {

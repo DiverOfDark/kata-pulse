@@ -1,8 +1,9 @@
+use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct SandboxCRIMetadata {
     pub uid: String,
     pub name: String,
