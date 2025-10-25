@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for KataPulse
 # Real-time metrics for Kata Containers. cadvisor-compatible monitoring agent.
-FROM rust:1.82 as builder
+FROM rust:1.90 as builder
 
 WORKDIR /app
 
