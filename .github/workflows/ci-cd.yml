@@ -22,8 +22,8 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/kata-pulse
-  CHART_NAME: ${{ github.repository }}/chart
+  IMAGE_NAME: diverofdark/kata-pulse/kata-pulse
+  CHART_NAME: diverofdark/kata-pulse/chart
 
 jobs:
   # ============================================================================
