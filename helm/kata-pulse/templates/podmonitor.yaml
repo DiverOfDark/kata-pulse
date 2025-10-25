@@ -18,6 +18,7 @@ spec:
       interval: {{ .Values.podMonitor.interval }}
       scrapeTimeout: {{ .Values.podMonitor.scrapeTimeout }}
       path: /metrics
+      honorLabels: true
       {{- with .Values.podMonitor.relabelings }}
       relabelings:
         {{- toYaml . | nindent 8 }}
