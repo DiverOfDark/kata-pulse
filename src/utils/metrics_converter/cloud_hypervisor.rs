@@ -459,7 +459,7 @@ mod tests {
                 samples: vec![],
             });
 
-        // Add samples: user=10_000_000 nanoseconds (10ms), system=5_000_000 nanoseconds (5ms)
+        // Add samples: user=37160 microseconds, system=45740 microseconds (from real data)
         cpu_metric.samples.push(MetricSample {
             name: "kata_guest_cpu_time".to_string(),
             labels: {
@@ -467,7 +467,7 @@ mod tests {
                 map.insert("item".to_string(), "user".to_string());
                 map
             },
-            value: 10_000_000.0,
+            value: 37160.0,
             timestamp: None,
         });
 
@@ -478,7 +478,7 @@ mod tests {
                 map.insert("item".to_string(), "system".to_string());
                 map
             },
-            value: 5_000_000.0,
+            value: 45740.0,
             timestamp: None,
         });
 
@@ -491,10 +491,10 @@ mod tests {
         );
         let cpu_metrics = converter.convert_cpu(&metrics).unwrap();
 
-        // (10_000_000 + 5_000_000) / 1_000_000_000 = 0.015 seconds
-        assert_eq!(cpu_metrics.usage_seconds_total, 0.015);
-        assert_eq!(cpu_metrics.user_seconds_total, 0.01);
-        assert_eq!(cpu_metrics.system_seconds_total, 0.005);
+        // (37160 + 45740) / 1_000_000 = 0.0829 seconds
+        assert_eq!(cpu_metrics.usage_seconds_total, 0.0829);
+        assert_eq!(cpu_metrics.user_seconds_total, 0.037160);
+        assert_eq!(cpu_metrics.system_seconds_total, 0.045740);
     }
 
     #[test]
@@ -585,7 +585,7 @@ mod tests {
                 samples: vec![],
             });
 
-        // Add samples: user=10_000_000 nanoseconds (10ms), system=5_000_000 nanoseconds (5ms)
+        // Add samples: user=37160 microseconds, system=45740 microseconds (from real data)
         cpu_metric.samples.push(MetricSample {
             name: "kata_guest_cpu_time".to_string(),
             labels: {
@@ -593,7 +593,7 @@ mod tests {
                 map.insert("item".to_string(), "user".to_string());
                 map
             },
-            value: 10_000_000.0,
+            value: 37160.0,
             timestamp: None,
         });
 
@@ -604,7 +604,7 @@ mod tests {
                 map.insert("item".to_string(), "system".to_string());
                 map
             },
-            value: 5_000_000.0,
+            value: 45740.0,
             timestamp: None,
         });
 
@@ -615,9 +615,9 @@ mod tests {
 
         let cpu_metrics = converter.convert_cpu(&metrics).unwrap();
 
-        // Verify metrics conversion: (10_000_000 + 5_000_000) / 1_000_000_000 = 0.015 seconds
-        assert_eq!(cpu_metrics.usage_seconds_total, 0.015);
-        assert_eq!(cpu_metrics.user_seconds_total, 0.01);
+        // Verify metrics conversion: (37160 + 45740) / 1_000_000 = 0.0829 seconds
+        assert_eq!(cpu_metrics.usage_seconds_total, 0.0829);
+        assert_eq!(cpu_metrics.user_seconds_total, 0.037160);
 
         // Verify enrichment happened during conversion (enriched labels are now in standard_labels)
         assert_eq!(cpu_metrics.standard_labels.name, "my-pod");
