@@ -276,13 +276,13 @@ The easiest way to deploy kata-pulse to Kubernetes is using the official Helm ch
 
 ```bash
 # Install from GHCR
-helm install kata-pulse oci://ghcr.io/diverofdark/kata-pulse/helm
+helm install kata-pulse oci://ghcr.io/diverofdark/kata-pulse-chart
 
 # Or to specific namespace
-helm install kata-pulse oci://ghcr.io/diverofdark/kata-pulse/helm -n monitoring --create-namespace
+helm install kata-pulse oci://ghcr.io/diverofdark/kata-pulse-chart -n monitoring --create-namespace
 
 # With custom values
-helm install kata-pulse oci://ghcr.io/diverofdark/kata-pulse/helm \
+helm install kata-pulse oci://ghcr.io/diverofdark/kata-pulse-chart \
   --set config.logLevel=debug \
   --set config.metricsIntervalSecs=30
 ```

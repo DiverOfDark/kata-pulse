@@ -11,10 +11,10 @@ Real-time metrics for Kata Containers - A cadvisor-compatible monitoring agent d
 
 ## Installation
 
-### Install from GitHub
+### Install from GHCR
 
 ```bash
-helm install kata-pulse oci://ghcr.io/diverofdark/kata-pulse/helm/kata-pulse
+helm install kata-pulse oci://ghcr.io/diverofdark/kata-pulse-chart
 ```
 
 Or clone the repository and install locally:
@@ -28,13 +28,13 @@ helm install kata-pulse ./helm/kata-pulse
 ### Install to Specific Namespace
 
 ```bash
-helm install kata-pulse oci://ghcr.io/diverofdark/kata-pulse/helm/kata-pulse -n monitoring --create-namespace
+helm install kata-pulse oci://ghcr.io/diverofdark/kata-pulse-chart -n monitoring --create-namespace
 ```
 
 ### Custom Configuration
 
 ```bash
-helm install kata-pulse oci://ghcr.io/diverofdark/kata-pulse/helm/kata-pulse \
+helm install kata-pulse oci://ghcr.io/diverofdark/kata-pulse-chart \
   --set config.logLevel=debug \
   --set config.metricsIntervalSecs=30 \
   --set resources.limits.memory=512Mi

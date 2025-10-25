@@ -216,4 +216,4 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login -u ${{ github.actor }} --password-stdin ${{ env.REGISTRY }}
           CHART_FILE=$(ls kata-pulse-*.tgz | head -1)
-          helm push "$CHART_FILE" oci://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/helm
+          helm push "$CHART_FILE" oci://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-chart
