@@ -26,33 +26,21 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # Verify the binary works
 RUN /kata-pulse --help || true
 
-# Runtime stage
-FROM debian:bookworm-slim
-
-WORKDIR /app
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    libssl3 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy the built binary from builder stage
-COPY --from=builder /kata-pulse /usr/local/bin/kata-pulse
+# Runtime stage - minimal distroless image with CA certificates only
+FROM gcr.io/distroless/cc-debian12:latest
 
 # Run as root (system component)
 USER root
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8090/ || exit 1
 
 # Default environment variables
 ENV KATA_PULSE_LISTEN="0.0.0.0:8090" \
     RUST_LOG=info
 
+# Copy the built binary from builder stage
+COPY --from=builder /kata-pulse /usr/local/bin/kata-pulse
+
 # Expose metrics port
 EXPOSE 8090
 
 # Run KataPulse
-ENTRYPOINT ["kata-pulse"]
+ENTRYPOINT ["/usr/local/bin/kata-pulse"]

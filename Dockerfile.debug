@@ -29,8 +29,6 @@ RUN /kata-pulse --help || true
 # Debug runtime stage
 FROM debian:bookworm-slim
 
-WORKDIR /app
-
 # Install runtime dependencies and debugging tools
 RUN apt-get update && apt-get install -y \
     ca-certificates \
@@ -70,10 +68,6 @@ RUN chmod +x /usr/local/bin/gdbserver-wrapper.sh
 
 # Run as root (system component)
 USER root
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8090/ || exit 1
 
 # Default environment variables
 ENV KATA_PULSE_LISTEN="0.0.0.0:8090" \

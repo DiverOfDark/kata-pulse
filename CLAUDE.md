@@ -212,3 +212,11 @@ See `daemonset.yaml` and `daemonset.debug.yaml` for K8s deployment patterns. The
    - Reference existing .md files for context
    - Update existing docs rather than creating new ones
    - Keep documentation in sync with code changes
+
+6. **Git Commits - NEVER Commit Automatically**
+   - **NEVER** commit changes by yourself
+   - **ALWAYS** show the changes with `git status` and `git diff`
+   - **ALWAYS** let the user review and approve before committing
+   - User must explicitly say "commit this" or similar
+   - Wait for user review and explicit approval
+   - This ensures complete control over what goes into the repository
