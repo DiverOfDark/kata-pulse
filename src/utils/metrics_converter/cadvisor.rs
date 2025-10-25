@@ -66,7 +66,7 @@ impl StandardLabels {
             container: "kata".to_string(), // Empty for sandbox-level metrics
             id: pod_uid_str,
             image: "unknown".to_string(), // Not available from Cloud Hypervisor metrics
-            name: pod_name_str.clone(), // Use pod name as container name
+            name: pod_name_str.clone(),   // Use pod name as container name
             namespace: pod_namespace_str,
             pod: pod_name_str,
         }
