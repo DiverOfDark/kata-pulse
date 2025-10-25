@@ -84,6 +84,8 @@ jobs:
   helm-lint:
     name: Helm Chart Lint
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     permissions:
       contents: read
     steps:
