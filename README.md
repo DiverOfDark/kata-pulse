@@ -453,6 +453,8 @@ For issues, questions, or suggestions:
 
 ## Acknowledgments
 
+This project was inspired by [kata-monitor](https://github.com/kata-containers/kata-monitor), the original Go-based monitoring agent for Kata Containers. kata-pulse is a complete rewrite in Rust with significant improvements in architecture, performance, and maintainability.
+
 Built with:
 - 🦀 Rust
 - ⚡ Tokio async runtime

@@ -16,6 +16,20 @@ const DEFAULT_RUNTIME_ENDPOINT: &str = "/run/containerd/containerd.sock";
 const DEFAULT_LOG_LEVEL: &str = "info";
 const DEFAULT_METRICS_INTERVAL_SECS: u64 = 60;
 
+const BANNER: &str = r#"
+╔═══════════════════════════════════════════════════════════════════╗
+║                                                                   ║
+║                        🐳  KATA-PULSE 🐳                            ║
+║          Real-time metrics for Kata Containers                    ║
+║                                                                   ║
+║  Repository: https://github.com/diverofdark/kata-pulse            ║
+║  Author: Kirill Orlov (@diverofdark)                              ║
+║                                                                   ║
+║  Thanks to Kata Containers for a great product!                   ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+"#;
+
 #[derive(Parser, Debug)]
 #[command(
     name = APP_NAME,
@@ -70,6 +84,9 @@ async fn main() {
         eprintln!("Failed to initialize logging: {}", e);
         return;
     }
+
+    // Print banner
+    println!("{}", BANNER);
 
     // Log startup information
     info!(
