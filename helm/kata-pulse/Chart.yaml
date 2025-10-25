@@ -1,5 +1,5 @@
 apiVersion: v2
-name: kata-pulse
+name: kata-pulse-chart
 description: Real-time metrics for Kata Containers - cadvisor-compatible monitoring agent
 type: application
 version: 1.0.0
