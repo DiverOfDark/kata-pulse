@@ -95,7 +95,6 @@ impl PrometheusMetrics {
     }
 }
 
-
 /// Parse metadata line (HELP or TYPE)
 /// Returns (metric_name, value) if successful
 fn parse_metadata_line(line: &str, prefix: &str) -> Option<(String, String)> {
