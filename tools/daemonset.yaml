@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kata-pulse
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: kata-pulse
+  template:
+    metadata:
+      labels:
+        app: kata-pulse
+    spec:
+      hostNetwork: true
+      containers:
+        - name: kata-pulse
+          image: harbor.internal.appbahn.eu/library/kata-pulse:latest
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          ports:
+            - name: metrics
+              containerPort: 1338
+              protocol: TCP
+          env:
+            - name: RUST_LOG
+              value: "info"
+            - name: KATA_PULSE_LISTEN
+              value: "0.0.0.0:1338"
+          volumeMounts:
+            - name: vc-sbs
+              mountPath: /run/vc/sbs
+              readOnly: true
+            - name: kata-runtime
+              mountPath: /run/kata
+              readOnly: true
+            - name: containerd-sock
+              mountPath: /run/containerd
+              readOnly: true
+#          livenessProbe:
+#            httpGet:
+#              path: /
+#              port: metrics
+#            initialDelaySeconds: 10
+#            periodSeconds: 30
+#          readinessProbe:
+#            httpGet:
+#              path: /metrics
+#              port: metrics
+#            initialDelaySeconds: 5
+#            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 2Gi
+      volumes:
+        - name: vc-sbs
+          hostPath:
+            path: /run/vc/sbs
+            type: DirectoryOrCreate
+        - name: kata-runtime
+          hostPath:
+            path: /run/kata
+            type: DirectoryOrCreate
+        - name: containerd-sock
+          hostPath:
+            path: /run/containerd
+            type: DirectoryOrCreate

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: containerd-socket-proxy
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: containerd-socket-proxy
+  template:
+    metadata:
+      labels:
+        app: containerd-socket-proxy
+    spec:
+      hostNetwork: true
+      hostPID: true
+      containers:
+        - name: socat
+          image: alpine/socat
+          securityContext:
+            privileged: true
+          command:
+            - sh
+            - -c
+            - |
+              set -eux
+              socat TCP-LISTEN:1338,reuseaddr,fork UNIX-CONNECT:/host/run/containerd/containerd.sock
+          volumeMounts:
+            - name: run
+              mountPath: /host/run
+      volumes:
+        - name: run
+          hostPath:
+            path: /run
+            type: Directory
+      tolerations:
+        - operator: "Exists"
+      nodeSelector: {}

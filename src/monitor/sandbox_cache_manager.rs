@@ -187,8 +187,7 @@ impl SandboxCacheManager {
                         .get_sandbox_list()
                         .await
                         .contains(sandbox)
-                {
-                    if self
+                    && self
                         .sandbox_cache
                         .put_if_not_exists(
                             sandbox,
@@ -199,23 +198,22 @@ impl SandboxCacheManager {
                             },
                         )
                         .await
-                    {
-                        info!(sandbox = %sandbox, "sandbox cache: added pod");
-                        sandbox_list.push(sandbox.clone());
-                    }
+                {
+                    info!(sandbox = %sandbox, "sandbox cache: added pod");
+                    sandbox_list.push(sandbox.clone());
                 }
             }
 
             // Check for deleted sandboxes
             let mut to_remove = Vec::new();
             for sandbox in &*sandbox_list {
-                if !current_list.contains(sandbox) {
-                    if self.sandbox_cache.delete_if_exists(sandbox).await {
-                        // Also remove metrics cache for deleted sandbox
-                        self.metrics_cache.delete_metrics(sandbox).await;
-                        info!(sandbox = %sandbox, "sandbox cache: removed pod and cleared metrics");
-                        to_remove.push(sandbox.clone());
-                    }
+                if !current_list.contains(sandbox)
+                    && self.sandbox_cache.delete_if_exists(sandbox).await
+                {
+                    // Also remove metrics cache for deleted sandbox
+                    self.metrics_cache.delete_metrics(sandbox).await;
+                    info!(sandbox = %sandbox, "sandbox cache: removed pod and cleared metrics");
+                    to_remove.push(sandbox.clone());
                 }
             }
             for sandbox in to_remove {

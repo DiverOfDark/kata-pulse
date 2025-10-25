@@ -98,7 +98,7 @@ async fn metrics_handler(ctx: web::Data<AppContext>, req: HttpRequest) -> HttpRe
                         warn!(sandbox_id = %sandbox_id, error = %e, "Failed to convert metrics to cAdvisor format, falling back to raw format");
                         // Fall back to raw Prometheus format on conversion error
                         let prometheus_output =
-                            (&cached_metrics.metrics).to_prometheus_format(None);
+                            cached_metrics.metrics.to_prometheus_format(None);
                         info!(sandbox_id = %sandbox_id, output_size = prometheus_output.len(), "Returning fallback raw metrics");
 
                         HttpResponse::Ok()

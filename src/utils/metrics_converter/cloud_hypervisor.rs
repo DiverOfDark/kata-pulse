@@ -65,7 +65,7 @@ impl MetricsConverter for CloudHypervisorConverter {
         // Formula: (user + system + guest + nice) / 100 (jiffies to seconds conversion)
         let mut total_jiffies = 0u64;
 
-        for (_, metric) in &metrics.metrics {
+        for metric in metrics.metrics.values() {
             if !metric.name.starts_with("kata_guest_cpu_time") {
                 continue;
             }
@@ -88,7 +88,7 @@ impl MetricsConverter for CloudHypervisorConverter {
             total_jiffies as f64 / self.config.cpu_jiffy_conversion_factor;
 
         // Extract individual components if available
-        for (_, metric) in &metrics.metrics {
+        for metric in metrics.metrics.values() {
             if !metric.name.starts_with("kata_guest_cpu_time") {
                 continue;
             }
@@ -129,7 +129,7 @@ impl MetricsConverter for CloudHypervisorConverter {
         let mut meminfo: HashMap<String, u64> = HashMap::new();
 
         // Extract all meminfo values
-        for (_, metric) in &metrics.metrics {
+        for metric in metrics.metrics.values() {
             if !metric.name.starts_with("kata_guest_meminfo") {
                 continue;
             }
@@ -188,7 +188,7 @@ impl MetricsConverter for CloudHypervisorConverter {
         let mut interfaces: HashMap<String, InterfaceMetrics> = HashMap::new();
 
         // Extract network stats per interface
-        for (_, metric) in &metrics.metrics {
+        for metric in metrics.metrics.values() {
             if !metric.name.starts_with("kata_guest_netdev_stat") {
                 continue;
             }
@@ -271,7 +271,7 @@ impl MetricsConverter for CloudHypervisorConverter {
         let mut devices: HashMap<String, DeviceMetrics> = HashMap::new();
 
         // Extract disk stats per device
-        for (_, metric) in &metrics.metrics {
+        for metric in metrics.metrics.values() {
             if !metric.name.starts_with("kata_guest_diskstat") {
                 continue;
             }
@@ -355,7 +355,7 @@ impl MetricsConverter for CloudHypervisorConverter {
         let mut process_metrics = ProcessMetrics::default();
 
         // Extract task counts
-        for (_, metric) in &metrics.metrics {
+        for metric in metrics.metrics.values() {
             if !metric.name.starts_with("kata_guest_tasks") {
                 continue;
             }
@@ -373,7 +373,7 @@ impl MetricsConverter for CloudHypervisorConverter {
         }
 
         // Aggregate thread count across all components
-        for (_, metric) in &metrics.metrics {
+        for metric in metrics.metrics.values() {
             let should_count = metric.name.ends_with("_threads")
                 && (metric.name.contains("shim")
                     || metric.name.contains("hypervisor")
@@ -388,7 +388,7 @@ impl MetricsConverter for CloudHypervisorConverter {
         }
 
         // Aggregate file descriptors across all components
-        for (_, metric) in &metrics.metrics {
+        for metric in metrics.metrics.values() {
             let should_count = metric.name.ends_with("_fds")
                 && (metric.name.contains("shim")
                     || metric.name.contains("hypervisor")
@@ -414,7 +414,7 @@ impl CloudHypervisorConverter {
     fn extract_load_average(&self, metrics: &PrometheusMetrics) -> Option<LoadAverage> {
         let mut loads = HashMap::new();
 
-        for (_, metric) in &metrics.metrics {
+        for metric in metrics.metrics.values() {
             if !metric.name.starts_with("kata_guest_load") {
                 continue;
             }

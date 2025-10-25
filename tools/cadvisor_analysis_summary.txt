@@ -1,0 +1,367 @@
+================================================================================
+                  CADVISOR METRICS ANALYSIS - COMPLETE SUMMARY
+================================================================================
+
+This analysis is based on cadvisor.out file from:
+/var/home/diverofdark/RustroverProjects/kata-monitor-proxy/cadvisor.out
+
+Total unique metrics found: 75
+
+================================================================================
+                           LABEL OVERVIEW
+================================================================================
+
+ALL UNIQUE LABELS FOUND (25 total):
+  boot_id, cadvisorRevision, cadvisorVersion, container, cpu, device, 
+  dockerVersion, failure_type, id, image, interface, kernelVersion, 
+  machine_id, major, minor, mode, name, namespace, operation, osVersion, 
+  pod, scope, state, system_uuid, ulimit
+
+STANDARD LABELS (present on most container metrics):
+  - container: Container name (often empty "" for pod-level aggregates)
+  - id: Cgroup path (e.g., /kubepods/burstable/pod<uuid>/<container-id>)
+  - image: Container image (e.g., registry.k8s.io/coredns/coredns:v1.12.3)
+  - name: Container ID (64-char hex string, empty "" for pod aggregates)
+  - namespace: Kubernetes namespace (e.g., kube-system, prometheus)
+  - pod: Kubernetes pod name
+
+CONDITIONAL LABELS (only on specific metrics):
+  - cpu: Only on container_cpu_usage_seconds_total (value: "total")
+  - interface: Only on network metrics (eth0, eth1, cilium_vxlan, lxc*)
+  - device: Only on filesystem and block I/O metrics
+  - major/minor: Only on block I/O metrics (device major/minor numbers)
+  - operation: Only on block I/O metrics ("Read" or "Write")
+  - failure_type: Only on container_memory_failures_total (pgfault, pgmajfault)
+  - scope: Only on container_memory_failures_total (container, hierarchy)
+  - state: Only on container_tasks_state (running, sleeping, stopped, uninterruptible, iowaiting)
+  - ulimit: Only on container_ulimits_soft (max_open_files)
+
+================================================================================
+                      CPU METRICS (7 metrics)
+================================================================================
+
+Metrics:
+  1. container_cpu_usage_seconds_total
+  2. container_cpu_system_seconds_total
+  3. container_cpu_user_seconds_total
+  4. container_cpu_cfs_periods_total
+  5. container_cpu_cfs_throttled_periods_total
+  6. container_cpu_cfs_throttled_seconds_total
+  7. container_cpu_load_average_10s
+
+Standard Labels: container, id, image, name, namespace, pod
+
+Special Labels:
+  - cpu: ONLY on container_cpu_usage_seconds_total
+    Value: "total"
+
+Label Patterns:
+  - container: "" (empty) for pod-level, or actual container name
+  - id: Cgroup path like /kubepods/burstable/pod<uuid>/<container-id>
+  - image: Full image URI or empty ""
+  - name: 64-char hex container ID or empty ""
+  - namespace: K8s namespace string or empty ""
+  - pod: K8s pod name or empty ""
+
+Always Present: id
+Optional: container, image, name, namespace, pod (empty for system-level)
+
+================================================================================
+                     MEMORY METRICS (12 metrics)
+================================================================================
+
+Metrics:
+  1. container_memory_usage_bytes
+  2. container_memory_working_set_bytes
+  3. container_memory_rss
+  4. container_memory_cache
+  5. container_memory_swap
+  6. container_memory_mapped_file
+  7. container_memory_max_usage_bytes
+  8. container_memory_failcnt
+  9. container_memory_kernel_usage
+  10. container_memory_total_active_file_bytes
+  11. container_memory_total_inactive_file_bytes
+  12. container_memory_failures_total
+
+Standard Labels: container, id, image, name, namespace, pod
+
+Special Labels (container_memory_failures_total only):
+  - failure_type: "pgfault" or "pgmajfault"
+  - scope: "container" or "hierarchy"
+
+Label Patterns: Same as CPU metrics
+
+Always Present: id
+Optional: container, image, name, namespace, pod
+
+================================================================================
+                    NETWORK METRICS (8 metrics)
+================================================================================
+
+Metrics:
+  1. container_network_receive_bytes_total
+  2. container_network_receive_packets_total
+  3. container_network_receive_packets_dropped_total
+  4. container_network_receive_errors_total
+  5. container_network_transmit_bytes_total
+  6. container_network_transmit_packets_total
+  7. container_network_transmit_packets_dropped_total
+  8. container_network_transmit_errors_total
+
+Standard Labels: container, id, image, name, namespace, pod
+
+Special Labels:
+  - interface: Network interface name (ALWAYS PRESENT on network metrics)
+
+Interface Values:
+  - Physical: eth0, eth1, bond0
+  - Virtual: cilium_host, cilium_net, cilium_vxlan, lxc_health
+  - Container: lxc<hex> (e.g., lxc19e60c339670, lxc4844aa50d8f0)
+  - Tunnel: ip6tnl0, dummy0
+
+Always Present: id, interface
+Optional: container, image, name, namespace, pod
+
+================================================================================
+                   BLOCK I/O METRICS (1 metric)
+================================================================================
+
+Metrics:
+  1. container_blkio_device_usage_total
+
+Standard Labels: container, id, image, name, namespace, pod
+
+Special Labels (ALL REQUIRED):
+  - device: Device path or empty ""
+  - major: Device major number (string: "7", "8", etc.)
+  - minor: Device minor number (string: "0", "1", "2", etc.)
+  - operation: "Read" or "Write"
+
+Device Values:
+  - Physical: /dev/sda, /dev/sdb
+  - Empty: "" (for loop devices and other virtual devices)
+
+Major/Minor Values:
+  - major="7": Loop devices
+  - major="8": SCSI disk devices (sda, sdb)
+  - minor varies per device partition
+
+Always Present: id, device, major, minor, operation
+Optional: container, image, name, namespace, pod
+
+================================================================================
+                  FILESYSTEM METRICS (17 metrics)
+================================================================================
+
+Metrics:
+  1. container_fs_usage_bytes
+  2. container_fs_limit_bytes
+  3. container_fs_inodes_free
+  4. container_fs_inodes_total
+  5. container_fs_io_current
+  6. container_fs_io_time_seconds_total
+  7. container_fs_io_time_weighted_seconds_total
+  8. container_fs_reads_bytes_total
+  9. container_fs_reads_total
+  10. container_fs_read_seconds_total
+  11. container_fs_reads_merged_total
+  12. container_fs_writes_bytes_total
+  13. container_fs_writes_total
+  14. container_fs_write_seconds_total
+  15. container_fs_writes_merged_total
+  16. container_fs_sector_reads_total
+  17. container_fs_sector_writes_total
+
+Standard Labels: container, id, image, name, namespace, pod
+
+Special Labels:
+  - device: Mount point or device path (ALWAYS PRESENT)
+
+Device Values:
+  - Physical: /dev/sda6, /dev/sdb
+  - Virtual: /dev/shm, /dev
+  - Mount points: /run, /etc/hosts, /etc/resolv.conf, /etc/machine-id
+  - Overlays: overlay_0-29, overlay_0-52, overlay_0-55, etc.
+  - Paths: /run/containerd/io.containerd.runtime.v2.task/system/...
+
+Always Present: id, device
+Optional: container, image, name, namespace, pod
+
+================================================================================
+                 PROCESS/THREAD METRICS (7 metrics)
+================================================================================
+
+Metrics:
+  1. container_processes
+  2. container_threads
+  3. container_threads_max
+  4. container_sockets
+  5. container_file_descriptors
+  6. container_tasks_state
+  7. container_ulimits_soft
+
+Standard Labels: container, id, image, name, namespace, pod
+
+Special Labels:
+  - state (container_tasks_state only):
+    Values: "running", "sleeping", "stopped", "uninterruptible", "iowaiting"
+  
+  - ulimit (container_ulimits_soft only):
+    Values: "max_open_files"
+
+Always Present: id
+Optional: container, image, name, namespace, pod
+Conditional: state (only on container_tasks_state)
+Conditional: ulimit (only on container_ulimits_soft)
+
+================================================================================
+               PRESSURE STALL METRICS (6 metrics)
+================================================================================
+
+Metrics:
+  1. container_pressure_cpu_stalled_seconds_total
+  2. container_pressure_cpu_waiting_seconds_total
+  3. container_pressure_io_stalled_seconds_total
+  4. container_pressure_io_waiting_seconds_total
+  5. container_pressure_memory_stalled_seconds_total
+  6. container_pressure_memory_waiting_seconds_total
+
+Standard Labels: container, id, image, name, namespace, pod
+
+Special Labels: None
+
+Always Present: id
+Optional: container, image, name, namespace, pod
+
+================================================================================
+                  CONTAINER SPEC METRICS (6 metrics)
+================================================================================
+
+Metrics:
+  1. container_spec_cpu_period
+  2. container_spec_cpu_quota
+  3. container_spec_cpu_shares
+  4. container_spec_memory_limit_bytes
+  5. container_spec_memory_reservation_limit_bytes
+  6. container_spec_memory_swap_limit_bytes
+
+Standard Labels: container, id, image, name, namespace, pod
+
+Special Labels: None
+
+Note: These are configuration/spec values, not usage metrics
+
+Always Present: id
+Optional: container, image, name, namespace, pod
+
+================================================================================
+                   METADATA METRICS (3 metrics)
+================================================================================
+
+Metrics:
+  1. container_start_time_seconds
+  2. container_last_seen
+  3. container_oom_events_total
+
+Standard Labels: container, id, image, name, namespace, pod
+
+Special Labels: None
+
+Always Present: id
+Optional: container, image, name, namespace, pod
+
+================================================================================
+                   MACHINE METRICS (7 metrics)
+================================================================================
+
+Metrics (no standard container labels):
+  1. machine_cpu_cores
+  2. machine_cpu_physical_cores
+  3. machine_cpu_sockets
+  4. machine_memory_bytes
+  5. machine_swap_bytes
+  6. machine_nvm_capacity
+  7. machine_nvm_avg_power_budget_watts
+
+Labels: Varies by metric, typically includes:
+  - boot_id
+  - machine_id
+  - system_uuid
+
+Note: These are node/machine-level metrics, not container-specific
+
+================================================================================
+                    CADVISOR METADATA (1 metric)
+================================================================================
+
+Metrics:
+  1. cadvisor_version_info
+
+Labels (ALL):
+  - cadvisorRevision: Git revision of cadvisor
+  - cadvisorVersion: Version string of cadvisor
+  - dockerVersion: Docker version
+  - kernelVersion: Linux kernel version (e.g., "6.12.52-talos")
+  - osVersion: OS version string (e.g., "Talos (v1.11.3)")
+
+================================================================================
+                      SUMMARY STATISTICS
+================================================================================
+
+Total Metrics: 75
+  - CPU: 7
+  - Memory: 12
+  - Network: 8
+  - Block I/O: 1
+  - Filesystem: 17
+  - Process/Thread: 7
+  - Pressure: 6
+  - Spec: 6
+  - Metadata: 3
+  - Machine: 7
+  - Cadvisor: 1
+
+Total Unique Labels: 25
+
+Standard Labels (6): container, id, image, name, namespace, pod
+Conditional Labels (19): cpu, device, major, minor, operation, interface,
+  failure_type, scope, state, ulimit, boot_id, machine_id, system_uuid,
+  cadvisorRevision, cadvisorVersion, dockerVersion, kernelVersion, osVersion, mode
+
+Label Presence Pattern:
+  - id: ALWAYS present (except machine/cadvisor metrics)
+  - container, image, name, namespace, pod: Often empty "" for system/pod-level
+  - Metric-specific labels: Always present for their respective metrics
+
+================================================================================
+                         KEY INSIGHTS
+================================================================================
+
+1. The "id" label is the most universal identifier, present on all container
+   metrics. It contains the cgroup path which uniquely identifies containers.
+
+2. K8s-specific labels (namespace, pod, container) are often empty for:
+   - System-level aggregates (id="/", id="/system")
+   - Pod-level aggregates (container="" but pod is populated)
+   - Non-Kubernetes workloads
+
+3. Network metrics always include "interface" to distinguish physical and
+   virtual network interfaces.
+
+4. Filesystem and block I/O metrics always include "device" to track per-device
+   usage.
+
+5. The "name" label typically contains the full container ID (64-char hex),
+   while "container" contains the human-readable container name from K8s.
+
+6. Some metrics have cardinality multipliers:
+   - Network: multiplied by number of interfaces
+   - Filesystem: multiplied by number of mounts/devices
+   - Block I/O: multiplied by (devices × operations)
+   - Tasks state: multiplied by 5 states
+
+7. Empty label values ("") are common and intentional, not errors. They
+   indicate aggregate-level metrics (pod-level, system-level, etc.).
+
+================================================================================

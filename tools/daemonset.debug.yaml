@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kata-pulse-debug
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: kata-pulse-debug
+  template:
+    metadata:
+      labels:
+        app: kata-pulse-debug
+    spec:
+      hostNetwork: true
+      hostPID: true
+      hostIPC: true
+      securityContext:
+        seccompProfile:
+          type: Unconfined
+      containers:
+        - name: kata-pulse-debug
+          image: harbor.internal.appbahn.eu/library/kata-pulse:debug
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          ports:
+            - name: metrics
+              containerPort: 1338
+              protocol: TCP
+            - name: gdbserver
+              containerPort: 1339
+              protocol: TCP
+          env:
+            - name: RUST_LOG
+              value: "debug"
+            - name: KATA_PULSE_LISTEN
+              value: "0.0.0.0:1338"
+            - name: GDB_PORT
+              value: "1339"
+          volumeMounts:
+            - name: vc-sbs
+              mountPath: /run/vc/sbs
+              readOnly: true
+            - name: kata-runtime
+              mountPath: /run/kata
+              readOnly: true
+            - name: containerd-sock
+              mountPath: /run/containerd
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 2Gi
+      volumes:
+        - name: vc-sbs
+          hostPath:
+            path: /run/vc/sbs
+            type: DirectoryOrCreate
+        - name: kata-runtime
+          hostPath:
+            path: /run/kata
+            type: DirectoryOrCreate
+        - name: containerd-sock
+          hostPath:
+            path: /run/containerd
+            type: DirectoryOrCreate

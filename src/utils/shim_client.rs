@@ -19,8 +19,8 @@ pub async fn do_get_with_timeout(
     let socket_address = config::client_socket_address(sandbox_id)?;
 
     // Parse the socket address to extract the path
-    let socket_path = if socket_address.starts_with("unix://") {
-        &socket_address[7..]
+    let socket_path = if let Some(path) = socket_address.strip_prefix("unix://") {
+        path
     } else {
         &socket_address
     };
