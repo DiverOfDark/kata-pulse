@@ -15,7 +15,10 @@ RUN apt-get update && apt-get install -y \
 COPY Cargo.toml Cargo.lock ./
 
 # Create a dummy main.rs to build dependencies
-RUN mkdir -p src && \
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/app/target \
+    mkdir -p src && \
     echo "fn main() {}" > src/main.rs && \
     cargo build --release && \
     rm -rf src
@@ -29,7 +32,10 @@ WORKDIR /app
 COPY src ./src
 
 # Build the release binary
-RUN cargo build --release
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/app/target \
+    cargo build --release
 
 # Verify the binary works
 RUN ./target/release/kata-pulse --help || true
