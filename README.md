@@ -156,41 +156,71 @@ curl http://localhost:8090/sandboxes
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   kata-pulse Daemon                     │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ┌──────────────────┐         ┌──────────────────┐      │
-│  │  HTTP Server     │         │  Metrics Cache   │      │
-│  │  (Actix-web)     │──────→  │  (Arc<RwLock>)   │      │
-│  └──────────────────┘         └──────────────────┘      │
-│       ↓                              ↑                  │
+┌──────────────────────────────────────────────────────────┐
+│                   kata-pulse Daemon                      │
+├──────────────────────────────────────────────────────────┤
+│                                                          │
+│  ┌──────────────────┐         ┌──────────────────┐       │
+│  │  HTTP Server     │         │  Metrics Cache   │       │
+│  │  (Axum)          │──────→  │  (Arc<RwLock>)   │       │
+│  └──────────────────┘         └──────────────────┘       │
+│       ↓                              ↑                   │
 │  GET /metrics                   Updated every           │
 │  GET /sandboxes                 60 seconds              │
-│                                                         │
-│  ┌──────────────────┐         ┌──────────────────┐      │
-│  │ Metrics Collector│         │ Sandbox Cache    │      │
-│  │ (Periodic Task)  │──────→  │ (Arc<RwLock>)    │      │
-│  └──────────────────┘         └──────────────────┘      │
-│       ↓                             ↑                   │
-│   Per-sandbox shim    ← CRI Sync Task (every 5s)        │
-│                                                         │
-│  ┌──────────────────┐         ┌──────────────────┐      │
-│  │ Sandbox Manager  │         │ Directory        │      │
-│  │ (SandboxCache    │ ←────→  │ Monitor          │      │
-│  │  + CRI Client)   │         │ (/run/vc/sbs)    │      │
-│  └──────────────────┘         └──────────────────┘      │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+│                                                          │
+│  ┌──────────────────┐         ┌──────────────────┐       │
+│  │ Metrics Collector│         │ Sandbox Cache    │       │
+│  │ (Tokio Task)     │──────→  │ (Arc<RwLock>)    │       │
+│  └──────────────────┘         └──────────────────┘       │
+│       ↓                             ↑                    │
+│   Per-sandbox shim    ← CRI Sync Task (every 5s)         │
+│   Unix domain sockets                                   │
+│                                                          │
+│  ┌──────────────────┐         ┌──────────────────┐       │
+│  │ Sandbox Manager  │         │ Directory        │       │
+│  │ (SandboxCache    │ ←────→  │ Watcher          │       │
+│  │  + CRI Client)   │         │ (/run/vc/sbs,    │       │
+│  └──────────────────┘         │  /run/kata)      │       │
+│                               └──────────────────┘       │
+│                                                          │
+│  ┌──────────────────┐         ┌──────────────────┐       │
+│  │ Metrics Converter│         │ Cloud Hypervisor │       │
+│  │ (cAdvisor compat)│ ←────→  │ → cAdvisor       │       │
+│  └──────────────────┘         │ format mapper    │       │
+│                               └──────────────────┘       │
+│                                                          │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ### Key Components
 
-1. **HTTP Server** - Serves metrics and manages requests
-2. **Metrics Collector** - Periodic task collecting metrics from sandboxes
-3. **Sandbox Cache Manager** - Monitors filesystem and syncs with CRI
-4. **CRI Client** - Communicates with container runtime (Kubernetes)
-5. **Metrics Converter** - Transforms Cloud Hypervisor metrics to cAdvisor format
+1. **HTTP Server (Axum)** - High-performance async HTTP server for endpoints
+   - GET / - Index page (HTML format)
+   - GET /metrics - Aggregated or per-sandbox metrics in Prometheus format
+   - GET /sandboxes - List all running sandboxes with metadata
+
+2. **Metrics Collector** - Background task that periodically:
+   - Queries active sandboxes from cache
+   - Fetches metrics from per-sandbox shims via Unix sockets
+   - Parses Prometheus format metrics
+   - Stores metrics in thread-safe cache (double-buffered)
+
+3. **Sandbox Cache Manager** - Tracks sandbox lifecycle:
+   - Watches /run/vc/sbs and /run/kata directories for additions/deletions
+   - Syncs metadata with CRI runtime every 5 seconds
+   - Maintains CRI metadata (pod name, namespace, UID)
+   - Cleans up stale metrics when sandboxes terminate
+
+4. **CRI Client** - Kubernetes container runtime integration:
+   - gRPC connection to containerd CRI endpoint
+   - Enriches sandbox metadata with Kubernetes pod information
+   - Handles retries and connection management
+
+5. **Metrics Converter** - Cloud Hypervisor format transformation:
+   - Parses Prometheus metrics from shim (gauge format with labels)
+   - Converts CPU time (microseconds → seconds), memory (KB), network (bytes), disk I/O
+   - Enriches with Kubernetes labels (pod_name, namespace, uid)
+   - Outputs cAdvisor-compatible format for Prometheus scraping
 
 ## Metrics Format
 
@@ -456,8 +486,10 @@ For issues, questions, or suggestions:
 This project was inspired by [kata-monitor](https://github.com/kata-containers/kata-monitor), the original Go-based monitoring agent for Kata Containers. kata-pulse is a complete rewrite in Rust with significant improvements in architecture, performance, and maintainability.
 
 Built with:
-- 🦀 Rust
+- 🦀 Rust (Edition 2021)
 - ⚡ Tokio async runtime
-- 🌐 Actix-web HTTP framework
+- 🌐 Axum HTTP framework
 - 📊 Prometheus metrics format
-- 🐳 Docker containerization
+- 🐳 Docker multi-stage builds with distroless
+- 🏗️ Cloud Hypervisor metrics integration
+- ☸️ Kubernetes CRI integration
