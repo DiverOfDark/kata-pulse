@@ -1,7 +1,6 @@
 # kata-pulse
 
-[![Build and Push](https://github.com/kata-containers/kata-pulse/actions/workflows/build-and-push.yml/badge.svg)](https://github.com/kata-containers/kata-pulse/actions)
-[![Tests](https://github.com/kata-containers/kata-pulse/actions/workflows/test.yml/badge.svg)](https://github.com/kata-containers/kata-pulse/actions)
+[![CI/CD](https://github.com/kata-containers/kata-pulse/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/kata-containers/kata-pulse/actions)
 
 Real-time metrics for Kata Containers. A cadvisor-compatible monitoring agent providing metrics collection for Kata Containers environments.
 

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Represents a single Prometheus metric
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct PrometheusMetric {
     /// Metric name
     pub name: String,
@@ -95,17 +95,6 @@ impl PrometheusMetrics {
     }
 }
 
-impl Default for PrometheusMetric {
-    fn default() -> Self {
-        PrometheusMetric {
-            name: String::new(),
-            metric_type: None,
-            help: None,
-            samples: Vec::new(),
-        }
-    }
-}
-
 /// Parse metadata line (HELP or TYPE)
 /// Returns (metric_name, value) if successful
 fn parse_metadata_line(line: &str, prefix: &str) -> Option<(String, String)> {
@@ -188,8 +177,8 @@ fn parse_labels(labels_str: &str) -> Result<HashMap<String, String>> {
 fn extract_base_metric_name(full_name: &str) -> String {
     // Common Prometheus suffixes
     for suffix in &["_total", "_count", "_sum", "_bucket", "_info", "_created"] {
-        if full_name.ends_with(suffix) {
-            return full_name[..full_name.len() - suffix.len()].to_string();
+        if let Some(base) = full_name.strip_suffix(suffix) {
+            return base.to_string();
         }
     }
     full_name.to_string()
@@ -214,7 +203,7 @@ impl PrometheusFormat for PrometheusMetrics {
     fn to_prometheus_format(&self, _sandbox_id: Option<&str>) -> String {
         let mut output = String::new();
 
-        for (_, metric) in &self.metrics {
+        for metric in self.metrics.values() {
             // Write HELP line if available
             if let Some(help) = &metric.help {
                 output.push_str(&format!("# HELP {} {}\n", metric.name, help));
@@ -277,7 +266,7 @@ requests_total 42
 "#;
         let metrics = PrometheusMetrics::parse(content).unwrap();
         // Metrics are stored by base name (without _total suffix)
-        assert!(metrics.metrics.get("requests").is_some());
+        assert!(metrics.metrics.contains_key("requests"));
         let metric = metrics.metrics.get("requests").unwrap();
         assert_eq!(metric.samples.len(), 1);
         assert_eq!(metric.samples[0].value, 42.0);

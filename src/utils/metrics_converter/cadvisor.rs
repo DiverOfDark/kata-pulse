@@ -74,7 +74,7 @@ impl StandardLabels {
 
     /// Convert to label string for Prometheus format
     fn to_label_string(&self) -> String {
-        let labels = vec![
+        let labels = [
             format!(r#"container="{}""#, escape_label_value(&self.container)),
             format!(r#"id="{}""#, escape_label_value(&self.id)),
             format!(r#"image="{}""#, escape_label_value(&self.image)),
@@ -130,6 +130,7 @@ pub struct CpuMetrics {
     pub load_average: Option<LoadAverage>,
 
     /// Per-CPU breakdown (optional, for detailed monitoring)
+    #[allow(dead_code)]
     pub per_cpu: HashMap<String, f64>,
 
     /// Standard cAdvisor labels (container, id, image, name, namespace, pod)
@@ -501,7 +502,7 @@ impl PrometheusFormat for NetworkMetrics {
                 "# HELP container_network_receive_bytes_total Total bytes received per interface\n",
             );
             output.push_str("# TYPE container_network_receive_bytes_total counter\n");
-            for (_, iface) in &self.per_interface {
+            for iface in self.per_interface.values() {
                 if iface.receive_bytes > 0 {
                     let iface_labels = self
                         .standard_labels
@@ -515,7 +516,7 @@ impl PrometheusFormat for NetworkMetrics {
 
             output.push_str("# HELP container_network_transmit_bytes_total Total bytes transmitted per interface\n");
             output.push_str("# TYPE container_network_transmit_bytes_total counter\n");
-            for (_, iface) in &self.per_interface {
+            for iface in self.per_interface.values() {
                 if iface.transmit_bytes > 0 {
                     let iface_labels = self
                         .standard_labels
@@ -529,7 +530,7 @@ impl PrometheusFormat for NetworkMetrics {
 
             output.push_str("# HELP container_network_receive_packets_total Total packets received per interface\n");
             output.push_str("# TYPE container_network_receive_packets_total counter\n");
-            for (_, iface) in &self.per_interface {
+            for iface in self.per_interface.values() {
                 if iface.receive_packets > 0 {
                     let iface_labels = self
                         .standard_labels
@@ -543,7 +544,7 @@ impl PrometheusFormat for NetworkMetrics {
 
             output.push_str("# HELP container_network_transmit_packets_total Total packets transmitted per interface\n");
             output.push_str("# TYPE container_network_transmit_packets_total counter\n");
-            for (_, iface) in &self.per_interface {
+            for iface in self.per_interface.values() {
                 if iface.transmit_packets > 0 {
                     let iface_labels = self
                         .standard_labels
@@ -623,7 +624,7 @@ impl PrometheusFormat for DiskMetrics {
         // Emit per-device block I/O metrics if available
         if !self.per_device.is_empty() {
             // cAdvisor emits block I/O as container_blkio_device_usage_total with device, major, minor, operation labels
-            for (_, device) in &self.per_device {
+            for device in self.per_device.values() {
                 // Read operations
                 if device.reads > 0 {
                     let dev_labels = self.standard_labels.to_label_string_with_extras(&[
