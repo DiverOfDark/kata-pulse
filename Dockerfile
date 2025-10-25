@@ -17,7 +17,6 @@ COPY Cargo.toml Cargo.lock ./
 # Create a dummy main.rs to build dependencies
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
-    --mount=type=cache,target=/app/target \
     mkdir -p src && \
     echo "fn main() {}" > src/main.rs && \
     cargo build --release && \
@@ -35,10 +34,11 @@ COPY src ./src
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/app/target \
-    cargo build --release
+    cargo build --release && \
+    cp /app/target/release/kata-pulse /kata-pulse
 
 # Verify the binary works
-RUN ./target/release/kata-pulse --help || true
+RUN /kata-pulse --help || true
 
 # Stage 3: Runtime stage
 FROM debian:bookworm-slim
@@ -52,7 +52,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the built binary from builder stage
-COPY --from=builder /app/target/release/kata-pulse /usr/local/bin/kata-pulse
+COPY --from=builder /kata-pulse /usr/local/bin/kata-pulse
 
 # Run as root (system component)
 USER root
