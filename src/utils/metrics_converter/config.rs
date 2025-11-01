@@ -7,13 +7,37 @@ use std::sync::Arc;
 /// This is used to convert jiffies from /proc/stat to seconds.
 /// The value represents the number of clock ticks per second.
 ///
+/// Priority:
+/// 1. `KATA_PULSE_CLK_TCK` environment variable (if set and valid)
+/// 2. `sysconf(_SC_CLK_TCK)` on Unix systems
+/// 3. Fallback to 100 Hz (standard on most Linux systems)
+///
 /// # Returns
-/// The CLK_TCK value if available, or 100 as a safe default.
-/// On most modern Linux systems, this is 100 Hz (ticks per second).
+/// The CLK_TCK value as a f64
 fn get_clk_tck() -> f64 {
-    // Try to get CLK_TCK via sysconf
-    // POSIX guarantees CLK_TCK and we can get it via sysconf(_SC_CLK_TCK)
-    // However, glibc also defines CLK_TCK macro in time.h
+    // First, try environment variable override
+    if let Ok(env_value) = std::env::var("KATA_PULSE_CLK_TCK") {
+        if let Ok(clk_tck) = env_value.parse::<f64>() {
+            if clk_tck > 0.0 {
+                tracing::info!(
+                    clk_tck = clk_tck,
+                    source = "KATA_PULSE_CLK_TCK environment variable",
+                    "CPU jiffy conversion factor obtained from environment variable"
+                );
+                return clk_tck;
+            } else {
+                tracing::warn!(
+                    value = env_value,
+                    "KATA_PULSE_CLK_TCK must be positive, falling back to system detection"
+                );
+            }
+        } else {
+            tracing::warn!(
+                value = env_value,
+                "KATA_PULSE_CLK_TCK is not a valid number, falling back to system detection"
+            );
+        }
+    }
 
     // Try using sysconf if available
     #[cfg(unix)]
@@ -22,13 +46,25 @@ fn get_clk_tck() -> f64 {
         let clk_tck = unsafe { libc::sysconf(libc::_SC_CLK_TCK) };
 
         if clk_tck > 0 {
-            return clk_tck as f64;
+            let clk_tck_f64 = clk_tck as f64;
+            tracing::info!(
+                clk_tck = clk_tck_f64,
+                source = "sysconf(_SC_CLK_TCK)",
+                "CPU jiffy conversion factor obtained from system"
+            );
+            return clk_tck_f64;
         }
     }
 
     // Fallback to 100 Hz (standard on most Linux systems)
     // This is defined by Linux kernel as USER_HZ
-    100.0
+    let default_clk_tck = 100.0;
+    tracing::info!(
+        clk_tck = default_clk_tck,
+        source = "hardcoded default",
+        "CPU jiffy conversion factor using fallback default (sysconf unavailable or returned invalid value)"
+    );
+    default_clk_tck
 }
 
 /// Enriched labels from CRI metadata
@@ -303,5 +339,37 @@ mod tests {
         assert_eq!(labels2.pod_name, "pod-2");
         assert_eq!(labels2.pod_namespace, "ns-2");
         assert_eq!(labels2.pod_uid, "uid-2");
+    }
+
+    #[test]
+    fn test_get_clk_tck_with_valid_env_override() {
+        // Test that environment variable override works
+        std::env::set_var("KATA_PULSE_CLK_TCK", "250");
+        // Note: We can't directly test get_clk_tck() since it's private and called at config creation
+        // But we can verify config creation respects environment
+        let config = ConversionConfig::default();
+        // The conversion factor should be 250 if the env var was picked up
+        assert_eq!(config.cpu_jiffy_conversion_factor, 250.0);
+        std::env::remove_var("KATA_PULSE_CLK_TCK");
+    }
+
+    #[test]
+    fn test_get_clk_tck_with_invalid_env_override() {
+        // Test that invalid env values fall back to system/default
+        std::env::set_var("KATA_PULSE_CLK_TCK", "not_a_number");
+        let config = ConversionConfig::default();
+        // Should fall back to sysconf or default (100)
+        assert!(config.cpu_jiffy_conversion_factor > 0.0);
+        std::env::remove_var("KATA_PULSE_CLK_TCK");
+    }
+
+    #[test]
+    fn test_get_clk_tck_with_negative_env_override() {
+        // Test that negative env values are rejected
+        std::env::set_var("KATA_PULSE_CLK_TCK", "-50");
+        let config = ConversionConfig::default();
+        // Should fall back to sysconf or default (100)
+        assert!(config.cpu_jiffy_conversion_factor > 0.0);
+        std::env::remove_var("KATA_PULSE_CLK_TCK");
     }
 }
