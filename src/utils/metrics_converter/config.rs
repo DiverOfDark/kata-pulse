@@ -2,6 +2,35 @@
 
 use std::sync::Arc;
 
+/// Get the CLK_TCK value from the system (equivalent to `getconf CLK_TCK`)
+///
+/// This is used to convert jiffies from /proc/stat to seconds.
+/// The value represents the number of clock ticks per second.
+///
+/// # Returns
+/// The CLK_TCK value if available, or 100 as a safe default.
+/// On most modern Linux systems, this is 100 Hz (ticks per second).
+fn get_clk_tck() -> f64 {
+    // Try to get CLK_TCK via sysconf
+    // POSIX guarantees CLK_TCK and we can get it via sysconf(_SC_CLK_TCK)
+    // However, glibc also defines CLK_TCK macro in time.h
+
+    // Try using sysconf if available
+    #[cfg(unix)]
+    {
+        // sysconf(_SC_CLK_TCK) - this is the standard POSIX way
+        let clk_tck = unsafe { libc::sysconf(libc::_SC_CLK_TCK) };
+
+        if clk_tck > 0 {
+            return clk_tck as f64;
+        }
+    }
+
+    // Fallback to 100 Hz (standard on most Linux systems)
+    // This is defined by Linux kernel as USER_HZ
+    100.0
+}
+
 /// Enriched labels from CRI metadata
 ///
 /// Contains typed fields for Kubernetes pod metadata obtained from CRI.
@@ -81,7 +110,7 @@ impl Default for ConversionConfig {
                 "tap.*".to_string(),
                 "tun.*".to_string(),
             ],
-            cpu_jiffy_conversion_factor: 100.0, // jiffies to seconds (USER_HZ = 100)
+            cpu_jiffy_conversion_factor: get_clk_tck(), // jiffies to seconds (obtained from system via sysconf)
         }
     }
 }

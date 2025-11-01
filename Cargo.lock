@@ -661,6 +661,7 @@ dependencies = [
  "containerd-client",
  "futures",
  "k8s-cri",
+ "libc",
  "serde",
  "serde_json",
  "tokio",
