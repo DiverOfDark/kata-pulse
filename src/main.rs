@@ -88,6 +88,12 @@ async fn main() {
     // Print banner
     println!("{}", BANNER);
 
+    // Validate arguments
+    if args.metrics_interval_secs == 0 {
+        eprintln!("Error: metrics_interval_secs must be > 0");
+        return;
+    }
+
     // Log startup information
     info!(
         app = APP_NAME,

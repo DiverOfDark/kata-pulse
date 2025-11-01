@@ -60,10 +60,24 @@ async fn do_http_get_unix_socket(
     // Parse HTTP response to extract body
     let response_str = String::from_utf8_lossy(&buffer);
 
-    if !response_str.contains("200") {
-        let status_line = response_str.lines().next().unwrap_or("Unknown");
+    // Validate HTTP status code
+    // Parse the status line: "HTTP/1.1 200 OK" or similar
+    let status_line = response_str.lines().next().unwrap_or("");
+    let status_code = if let Some(code_str) = status_line.split_whitespace().nth(1) {
+        code_str
+    } else {
         return Err(anyhow::anyhow!(
-            "unexpected status from {}: {}",
+            "malformed HTTP response from {}: missing status code in line: {}",
+            uri,
+            status_line
+        ));
+    };
+
+    // Only accept 200 OK (exact match, not substring)
+    if status_code != "200" {
+        return Err(anyhow::anyhow!(
+            "unexpected HTTP status {} from {}: {}",
+            status_code,
             uri,
             status_line
         ));
@@ -73,6 +87,7 @@ async fn do_http_get_unix_socket(
     if let Some(body_start) = response_str.find("\r\n\r\n") {
         Ok(response_str[body_start + 4..].as_bytes().to_vec())
     } else {
+        // Return empty body for responses with no body
         Ok(vec![])
     }
 }

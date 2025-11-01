@@ -47,6 +47,14 @@ impl AppContext {
             return Err(anyhow::anyhow!("runtime endpoint missing"));
         }
 
+        // Validate metrics interval
+        if metrics_interval_secs == 0 {
+            return Err(anyhow::anyhow!(
+                "metrics_interval_secs must be > 0, got {}",
+                metrics_interval_secs
+            ));
+        }
+
         // Create the core caches
         let sandbox_cache = Arc::new(SandboxCache::new());
         let metrics_cache = Arc::new(MetricsCache::new());
@@ -159,5 +167,23 @@ mod tests {
     fn test_app_context_empty_endpoint() {
         let context = AppContext::new(String::new(), 1);
         assert!(context.is_err());
+    }
+
+    #[test]
+    fn test_app_context_zero_metrics_interval() {
+        let context = AppContext::new("/tmp/test.sock".to_string(), 0);
+        assert!(
+            context.is_err(),
+            "Should reject zero metrics_interval_secs"
+        );
+    }
+
+    #[test]
+    fn test_app_context_valid_metrics_interval() {
+        let context = AppContext::new("/tmp/test.sock".to_string(), 60);
+        assert!(
+            context.is_ok(),
+            "Should accept valid metrics_interval_secs > 0"
+        );
     }
 }

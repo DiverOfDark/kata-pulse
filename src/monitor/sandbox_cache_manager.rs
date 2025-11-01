@@ -153,11 +153,13 @@ impl SandboxCacheManager {
         .await
         {
             Ok(remaining) => {
-                *sandbox_list = remaining;
-                if !sandbox_list.is_empty() {
+                // Note: remaining contains only sandboxes that failed to sync and should be retried
+                // We do NOT replace the entire sandbox_list with it
+                // The sandbox_list is managed by check_filesystem_changes(), not by CRI sync
+                if !remaining.is_empty() {
                     debug!(
-                        remaining = sandbox_list.len(),
-                        "sandboxes still missing metadata"
+                        remaining = remaining.len(),
+                        "sandboxes still missing metadata (will retry)"
                     );
                 }
             }
@@ -237,5 +239,139 @@ mod tests {
             "/run/containerd/containerd.sock".to_string(),
         );
         assert_eq!(manager.runtime_endpoint, "/run/containerd/containerd.sock");
+    }
+
+    #[tokio::test]
+    async fn test_cri_sync_preserves_sandbox_list() {
+        // This test validates the fix for the bug where sandbox_list was being
+        // replaced with the "remaining" (failed) sandboxes from CRI sync,
+        // causing all successfully synced sandboxes to disappear from the list.
+
+        let sandbox_cache = Arc::new(SandboxCache::new());
+        let metrics_cache = Arc::new(MetricsCache::new());
+        let manager = SandboxCacheManager::new(
+            sandbox_cache.clone(),
+            metrics_cache,
+            "/run/containerd/containerd.sock".to_string(),
+        );
+
+        // Set up initial sandboxes in the cache
+        let initial_sandboxes = vec![
+            "sandbox-1".to_string(),
+            "sandbox-2".to_string(),
+            "sandbox-3".to_string(),
+        ];
+
+        for sandbox in &initial_sandboxes {
+            sandbox_cache
+                .put_if_not_exists(
+                    sandbox,
+                    crate::monitor::sandbox_cache::SandboxCRIMetadata {
+                        uid: String::new(),
+                        name: String::new(),
+                        namespace: String::new(),
+                    },
+                )
+                .await;
+        }
+
+        // Verify initial state
+        let list_before = sandbox_cache.get_sandbox_list().await;
+        assert_eq!(list_before.len(), 3, "Should have 3 sandboxes initially");
+
+        // Simulate CRI metadata sync
+        // The sync_cri_metadata method should NOT replace the sandbox_list
+        // even if CRI sync completes successfully
+        let mut sandbox_list = initial_sandboxes.clone();
+
+        // Call sync_cri_metadata - this should preserve the sandbox_list
+        manager.sync_cri_metadata(&mut sandbox_list).await;
+
+        // After CRI sync, the sandbox_list should still contain all original sandboxes
+        assert_eq!(
+            sandbox_list.len(),
+            3,
+            "sandbox_list should still contain all 3 sandboxes after CRI sync"
+        );
+        assert!(
+            sandbox_list.contains(&"sandbox-1".to_string()),
+            "sandbox-1 should still be in list"
+        );
+        assert!(
+            sandbox_list.contains(&"sandbox-2".to_string()),
+            "sandbox-2 should still be in list"
+        );
+        assert!(
+            sandbox_list.contains(&"sandbox-3".to_string()),
+            "sandbox-3 should still be in list"
+        );
+
+        // Verify sandbox_cache still has all sandboxes
+        let list_after = sandbox_cache.get_sandbox_list().await;
+        assert_eq!(
+            list_after.len(),
+            3,
+            "sandbox_cache should still have all 3 sandboxes"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_sandbox_list_survives_filesystem_check() {
+        // This test validates that the sandbox_list is managed by check_filesystem_changes
+        // and not corrupted by CRI sync operations.
+
+        let sandbox_cache = Arc::new(SandboxCache::new());
+        let metrics_cache = Arc::new(MetricsCache::new());
+        let manager = SandboxCacheManager::new(
+            sandbox_cache.clone(),
+            metrics_cache,
+            "/run/containerd/containerd.sock".to_string(),
+        );
+
+        // Set up initial sandboxes
+        let sandbox_ids = vec!["sandbox-abc123", "sandbox-def456", "sandbox-ghi789"];
+
+        for id in &sandbox_ids {
+            sandbox_cache
+                .put_if_not_exists(
+                    id,
+                    crate::monitor::sandbox_cache::SandboxCRIMetadata {
+                        uid: format!("uid-{}", id),
+                        name: format!("pod-{}", id),
+                        namespace: "default".to_string(),
+                    },
+                )
+                .await;
+        }
+
+        // Simulate multiple rounds of CRI sync (every 5 seconds)
+        // The sandbox_list should remain intact through all syncs
+        for round in 0..3 {
+            let mut sandbox_list = sandbox_cache.get_sandbox_list().await;
+            let list_size_before = sandbox_list.len();
+
+            manager.sync_cri_metadata(&mut sandbox_list).await;
+
+            let list_size_after = sandbox_list.len();
+
+            assert_eq!(
+                list_size_before, list_size_after,
+                "Round {}: sandbox_list size should not change after CRI sync",
+                round
+            );
+            assert_eq!(
+                list_size_after, 3,
+                "Round {}: sandbox_list should always have 3 sandboxes",
+                round
+            );
+        }
+
+        // Verify sandbox cache still has all sandboxes after multiple syncs
+        let final_list = sandbox_cache.get_sandbox_list().await;
+        assert_eq!(
+            final_list.len(),
+            3,
+            "After multiple CRI syncs, should still have all 3 sandboxes"
+        );
     }
 }
