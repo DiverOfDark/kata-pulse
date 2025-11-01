@@ -172,10 +172,7 @@ mod tests {
     #[test]
     fn test_app_context_zero_metrics_interval() {
         let context = AppContext::new("/tmp/test.sock".to_string(), 0);
-        assert!(
-            context.is_err(),
-            "Should reject zero metrics_interval_secs"
-        );
+        assert!(context.is_err(), "Should reject zero metrics_interval_secs");
     }
 
     #[test]

@@ -61,38 +61,6 @@ impl MetricsConverter for CloudHypervisorConverter {
 
         let mut cpu_metrics = CpuMetrics::default();
 
-        // Aggregate CPU time from the pre-computed "total" CPU metrics
-        // Metrics are provided per-CPU (cpu="0", cpu="1") and as aggregated totals (cpu="total")
-        // We use only the cpu="total" to avoid double-counting individual CPU cores
-        let mut total_jiffies = 0u64;
-
-        for metric in metrics.metrics.values() {
-            if !metric.name.starts_with("kata_guest_cpu_time") {
-                continue;
-            }
-
-            for sample in &metric.samples {
-                let cpu = sample.labels.get("cpu").map(|s| s.as_str());
-                let item = sample.labels.get("item").map(|s| s.as_str());
-                let value = sample.value as u64;
-
-                // Only use the pre-aggregated cpu="total" values
-                // Ignore individual per-CPU metrics (cpu="0", cpu="1", etc.) to avoid double-counting
-                if cpu == Some("total") {
-                    match item {
-                        Some("user") | Some("system") | Some("guest") | Some("nice") => {
-                            total_jiffies += value;
-                        }
-                        _ => {}
-                    }
-                }
-            }
-        }
-
-        cpu_metrics.usage_seconds_total =
-            total_jiffies as f64 / self.config.cpu_jiffy_conversion_factor;
-
-        // Extract individual components if available (using aggregated totals only)
         for metric in metrics.metrics.values() {
             if !metric.name.starts_with("kata_guest_cpu_time") {
                 continue;
@@ -104,7 +72,15 @@ impl MetricsConverter for CloudHypervisorConverter {
                 let value = sample.value;
 
                 // Only use the pre-aggregated cpu="total" values
+                // Ignore individual per-CPU metrics (cpu="0", cpu="1", etc.) to avoid double-counting
                 if cpu == Some("total") {
+                    match item {
+                        Some("user") | Some("system") | Some("guest") | Some("nice") => {
+                            cpu_metrics.usage_seconds_total +=
+                                value / self.config.cpu_jiffy_conversion_factor;
+                        }
+                        _ => {}
+                    }
                     match item {
                         Some("user") => {
                             cpu_metrics.user_seconds_total +=
