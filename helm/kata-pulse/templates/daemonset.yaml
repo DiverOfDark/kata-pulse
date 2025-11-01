@@ -34,6 +34,10 @@ spec:
               value: {{ .Values.config.metricsIntervalSecs | quote }}
             - name: RUST_LOG
               value: {{ .Values.config.logLevel | quote }}
+            {{- if .Values.config.cpuJiffyConversionFactor }}
+            - name: KATA_PULSE_CLK_TCK
+              value: {{ .Values.config.cpuJiffyConversionFactor | quote }}
+            {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
