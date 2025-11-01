@@ -62,7 +62,8 @@ pub struct ConversionConfig {
     /// Default: ["eth0", "veth.*", "tap.*", "tun.*"]
     pub network_interface_patterns: Vec<String>,
 
-    /// CPU time conversion factor: microseconds to seconds (1 million)
+    /// CPU time conversion factor: jiffies to seconds
+    /// jiffies from /proc/stat use USER_HZ (typically 100 Hz on Linux)
     pub cpu_jiffy_conversion_factor: f64,
 }
 
@@ -80,7 +81,7 @@ impl Default for ConversionConfig {
                 "tap.*".to_string(),
                 "tun.*".to_string(),
             ],
-            cpu_jiffy_conversion_factor: 1_000_000.0, // microseconds to seconds
+            cpu_jiffy_conversion_factor: 100.0, // jiffies to seconds (USER_HZ = 100)
         }
     }
 }
@@ -168,7 +169,7 @@ mod tests {
     fn test_default_config() {
         let config = ConversionConfig::default();
         assert_eq!(config.hypervisor_type, HypervisorType::CloudHypervisor);
-        assert_eq!(config.cpu_jiffy_conversion_factor, 1_000_000.0);
+        assert_eq!(config.cpu_jiffy_conversion_factor, 100.0);
     }
 
     #[test]

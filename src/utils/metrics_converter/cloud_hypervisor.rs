@@ -61,8 +61,9 @@ impl MetricsConverter for CloudHypervisorConverter {
 
         let mut cpu_metrics = CpuMetrics::default();
 
-        // Aggregate CPU time across all CPUs and items
-        // Formula: (user + system + guest + nice) / 100 (jiffies to seconds conversion)
+        // Aggregate CPU time from the pre-computed "total" CPU metrics
+        // Metrics are provided per-CPU (cpu="0", cpu="1") and as aggregated totals (cpu="total")
+        // We use only the cpu="total" to avoid double-counting individual CPU cores
         let mut total_jiffies = 0u64;
 
         for metric in metrics.metrics.values() {
@@ -71,15 +72,19 @@ impl MetricsConverter for CloudHypervisorConverter {
             }
 
             for sample in &metric.samples {
+                let cpu = sample.labels.get("cpu").map(|s| s.as_str());
                 let item = sample.labels.get("item").map(|s| s.as_str());
                 let value = sample.value as u64;
 
-                // Only sum user, system, guest, nice modes (not idle, iowait, etc.)
-                match item {
-                    Some("user") | Some("system") | Some("guest") | Some("nice") => {
-                        total_jiffies += value;
+                // Only use the pre-aggregated cpu="total" values
+                // Ignore individual per-CPU metrics (cpu="0", cpu="1", etc.) to avoid double-counting
+                if cpu == Some("total") {
+                    match item {
+                        Some("user") | Some("system") | Some("guest") | Some("nice") => {
+                            total_jiffies += value;
+                        }
+                        _ => {}
                     }
-                    _ => {}
                 }
             }
         }
@@ -87,26 +92,30 @@ impl MetricsConverter for CloudHypervisorConverter {
         cpu_metrics.usage_seconds_total =
             total_jiffies as f64 / self.config.cpu_jiffy_conversion_factor;
 
-        // Extract individual components if available
+        // Extract individual components if available (using aggregated totals only)
         for metric in metrics.metrics.values() {
             if !metric.name.starts_with("kata_guest_cpu_time") {
                 continue;
             }
 
             for sample in &metric.samples {
+                let cpu = sample.labels.get("cpu").map(|s| s.as_str());
                 let item = sample.labels.get("item").map(|s| s.as_str());
                 let value = sample.value;
 
-                match item {
-                    Some("user") => {
-                        cpu_metrics.user_seconds_total +=
-                            value / self.config.cpu_jiffy_conversion_factor;
+                // Only use the pre-aggregated cpu="total" values
+                if cpu == Some("total") {
+                    match item {
+                        Some("user") => {
+                            cpu_metrics.user_seconds_total +=
+                                value / self.config.cpu_jiffy_conversion_factor;
+                        }
+                        Some("system") => {
+                            cpu_metrics.system_seconds_total +=
+                                value / self.config.cpu_jiffy_conversion_factor;
+                        }
+                        _ => {}
                     }
-                    Some("system") => {
-                        cpu_metrics.system_seconds_total +=
-                            value / self.config.cpu_jiffy_conversion_factor;
-                    }
-                    _ => {}
                 }
             }
         }
@@ -454,20 +463,22 @@ mod tests {
             .entry("kata_guest_cpu_time".to_string())
             .or_insert_with(|| crate::utils::prometheus_parser::PrometheusMetric {
                 name: "kata_guest_cpu_time".to_string(),
-                metric_type: Some("counter".to_string()),
+                metric_type: Some("gauge".to_string()),
                 help: None,
                 samples: vec![],
             });
 
-        // Add samples: user=37160 microseconds, system=45740 microseconds (from real data)
+        // Add samples using the pre-aggregated cpu="total" values (from real data)
+        // This avoids double-counting individual CPU cores
         cpu_metric.samples.push(MetricSample {
             name: "kata_guest_cpu_time".to_string(),
             labels: {
                 let mut map = HashMap::new();
+                map.insert("cpu".to_string(), "total".to_string());
                 map.insert("item".to_string(), "user".to_string());
                 map
             },
-            value: 37160.0,
+            value: 56160.0,
             timestamp: None,
         });
 
@@ -475,10 +486,11 @@ mod tests {
             name: "kata_guest_cpu_time".to_string(),
             labels: {
                 let mut map = HashMap::new();
+                map.insert("cpu".to_string(), "total".to_string());
                 map.insert("item".to_string(), "system".to_string());
                 map
             },
-            value: 45740.0,
+            value: 82060.0,
             timestamp: None,
         });
 
@@ -491,10 +503,10 @@ mod tests {
         );
         let cpu_metrics = converter.convert_cpu(&metrics).unwrap();
 
-        // (37160 + 45740) / 1_000_000 = 0.0829 seconds
-        assert_eq!(cpu_metrics.usage_seconds_total, 0.0829);
-        assert_eq!(cpu_metrics.user_seconds_total, 0.037160);
-        assert_eq!(cpu_metrics.system_seconds_total, 0.045740);
+        // (56160 + 82060) / 100 = 1382.2 seconds (jiffies from /proc/stat with USER_HZ=100)
+        assert_eq!(cpu_metrics.usage_seconds_total, 1382.2);
+        assert_eq!(cpu_metrics.user_seconds_total, 561.6);
+        assert_eq!(cpu_metrics.system_seconds_total, 820.6);
     }
 
     #[test]
@@ -580,20 +592,21 @@ mod tests {
             .entry("kata_guest_cpu_time".to_string())
             .or_insert_with(|| crate::utils::prometheus_parser::PrometheusMetric {
                 name: "kata_guest_cpu_time".to_string(),
-                metric_type: Some("counter".to_string()),
+                metric_type: Some("gauge".to_string()),
                 help: None,
                 samples: vec![],
             });
 
-        // Add samples: user=37160 microseconds, system=45740 microseconds (from real data)
+        // Add samples using the pre-aggregated cpu="total" values (from real data)
         cpu_metric.samples.push(MetricSample {
             name: "kata_guest_cpu_time".to_string(),
             labels: {
                 let mut map = HashMap::new();
+                map.insert("cpu".to_string(), "total".to_string());
                 map.insert("item".to_string(), "user".to_string());
                 map
             },
-            value: 37160.0,
+            value: 56160.0,
             timestamp: None,
         });
 
@@ -601,10 +614,11 @@ mod tests {
             name: "kata_guest_cpu_time".to_string(),
             labels: {
                 let mut map = HashMap::new();
+                map.insert("cpu".to_string(), "total".to_string());
                 map.insert("item".to_string(), "system".to_string());
                 map
             },
-            value: 45740.0,
+            value: 82060.0,
             timestamp: None,
         });
 
@@ -615,9 +629,9 @@ mod tests {
 
         let cpu_metrics = converter.convert_cpu(&metrics).unwrap();
 
-        // Verify metrics conversion: (37160 + 45740) / 1_000_000 = 0.0829 seconds
-        assert_eq!(cpu_metrics.usage_seconds_total, 0.0829);
-        assert_eq!(cpu_metrics.user_seconds_total, 0.037160);
+        // Verify metrics conversion: (56160 + 82060) / 100 = 1382.2 seconds (jiffies with USER_HZ=100)
+        assert_eq!(cpu_metrics.usage_seconds_total, 1382.2);
+        assert_eq!(cpu_metrics.user_seconds_total, 561.6);
 
         // Verify enrichment happened during conversion (enriched labels are now in standard_labels)
         assert_eq!(cpu_metrics.standard_labels.name, "my-pod");
@@ -690,7 +704,7 @@ mod tests {
             .entry("kata_guest_cpu_time".to_string())
             .or_insert_with(|| crate::utils::prometheus_parser::PrometheusMetric {
                 name: "kata_guest_cpu_time".to_string(),
-                metric_type: Some("counter".to_string()),
+                metric_type: Some("gauge".to_string()),
                 help: None,
                 samples: vec![],
             });
@@ -699,6 +713,7 @@ mod tests {
             name: "kata_guest_cpu_time".to_string(),
             labels: {
                 let mut map = HashMap::new();
+                map.insert("cpu".to_string(), "total".to_string());
                 map.insert("item".to_string(), "user".to_string());
                 map
             },
