@@ -39,7 +39,7 @@ config:
   # CPU jiffy conversion factor (CLK_TCK) for converting /proc/stat jiffies to seconds
   # If not set, the application will auto-detect via sysconf(_SC_CLK_TCK), falling back to 100 Hz
   # Common values: 100 (most Linux systems), 250, 1000
-  cpuJiffyConversionFactor: null
+  cpuJiffyConversionFactor: 100000
 
 volumeMounts:
   - name: sandbox-dir
@@ -68,7 +68,7 @@ volumes:
 
 podMonitor:
   enabled: true
-  interval: 30s
+  interval: 60s
   scrapeTimeout: 10s
   labels: {}
   relabelings: []
