@@ -159,25 +159,19 @@ async fn metrics_handler(ctx: Arc<AppContext>, params: SandboxQuery) -> impl Int
     }
 
     if output.is_empty() {
-        warn!(
-            "Output is empty after collecting metrics from {} sandboxes",
+        debug!(
+            "No metrics available from {} sandboxes; returning empty 200 response",
             sandboxes.len()
         );
-        (
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            [("Content-Type", "text/plain; charset=utf-8")],
-            "No cached metrics available".to_string(),
-        )
-            .into_response()
     } else {
         info!(output_size = output.len(), "Returning aggregated metrics");
-        (
-            axum::http::StatusCode::OK,
-            [("Content-Type", "text/plain; charset=utf-8")],
-            output,
-        )
-            .into_response()
     }
+    (
+        axum::http::StatusCode::OK,
+        [("Content-Type", "text/plain; charset=utf-8")],
+        output,
+    )
+        .into_response()
 }
 
 /// Sandboxes listing handler
