@@ -10,6 +10,10 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
+# cargo-auditable embeds the resolved crate list in the binary (.dep-v0
+# section, survives strip) so Trivy can report Rust CVEs from the image.
+RUN cargo install cargo-auditable@0.7.7 --locked
+
 # Copy Cargo files
 COPY Cargo.toml Cargo.lock ./
 
@@ -20,7 +24,7 @@ COPY src ./src
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/app/target \
-    cargo build --release && \
+    cargo auditable build --release && \
     cp /app/target/release/kata-pulse /kata-pulse
 
 # Verify the binary works
