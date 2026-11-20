@@ -262,8 +262,11 @@ jobs:
 
     steps:
       - name: Run Trivy scan
-        uses: aquasecurity/trivy-action@0.28.0
+        # Pinned by commit: trivy-action's tags were force-pushed to malicious code in March
+        # 2026 (CVE-2026-33634) and the hijacked ones, 0.28.0 included, were deleted.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          version: v0.76.1
           image-ref: ${{ needs.build-publish.outputs.image }}
           format: 'sarif'
           output: 'trivy-results.sarif'
