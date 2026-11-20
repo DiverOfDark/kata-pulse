@@ -167,7 +167,7 @@ impl CRIClient {
                     "Failed to connect to containerd socket at {}: {}. \
                      Possible causes: (1) containerd not running, (2) socket permissions (run as root?), \
                      (3) SELinux policies, (4) network namespace mismatch, (5) socket is not a valid Unix socket",
-                    &self.config.endpoint,
+                    self.config.endpoint,
                     e
                 ))
             }
@@ -181,7 +181,7 @@ impl CRIClient {
                     "Timeout connecting to containerd socket at {} ({}s). \
                      Possible causes: (1) containerd service is slow/hung, (2) gRPC serialization overhead, \
                      (3) high system load",
-                    &self.config.endpoint,
+                    self.config.endpoint,
                     self.config.timeout.as_secs()
                 ))
             }
