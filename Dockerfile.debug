@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for KataPulse with gdbserver debugging
 # Real-time metrics for Kata Containers. cadvisor-compatible monitoring agent (debug variant).
-FROM rust:1.90 as builder
+FROM rust:1.91 as builder
 
 WORKDIR /app
 
